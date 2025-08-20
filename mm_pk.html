@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Type Mastermind</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #e91e63;
+            text-align: center;
+        }
+        
+        .game-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-section {
+            margin: 20px 0;
+        }
+        
+        select, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background-color: #388e3c;
+        }
+        
+        .type-list {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        
+        .type-item {
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .type-selector {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        
+        .game-output {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        .history {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .selectable-type {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .selectable-type:hover {
+            background-color: #bdbdbd;
+        }
+        
+        .selected-types {
+            margin: 15px 0;
+        }
+        
+        .status {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>MasterCalmMind</h1>
+    
+    <div class="game-container">
+        <!-- Setup Section -->
+        <div id="setupSection">
+            <h2>Game Setup</h2>
+            <div class="input-section">
+                <label>Difficulty:</label>
+                <select id="difficulty">
+                    <option value="1">Gym Leader (10 turns)</option>
+                    <option value="2">Elite Four (20 turns)</option>
+                    <option value="3">Champion (25 turns)</option>
+                </select>
+            </div>
+            
+            <div class="input-section">
+                <label>Type Names:</label>
+                <select id="typeNames">
+                    <option value="1">Classic</option>
+                    <option value="2">Alternative</option>
+                </select>
+            </div>
+            
+            <button id="startGame">Start Game</button>
+        </div>
+        
+        <!-- Game Section -->
+        <div id="gameSection" class="hidden">
+            <div id="turnsRemaining" class="status"></div>
+            
+            <div class="input-section">
+                <h3>Select your types:</h3>
+                <div id="typeList" class="type-list"></div>
+                
+                <div class="selected-types">
+                    <h4>Your selection:</h4>
+                    <div id="selectedTypes"></div>
+                </div>
+                
+                <button id="submitGuess">Submit Guess</button>
+                <button id="randomGuess">Random Guess</button>
+            </div>
+            
+            <div id="gameOutput" class="game-output"></div>
+            
+            <div id="history" class="history">
+                <h3>History</h3>
+            </div>
+            
+            <button id="newGame" class="hidden">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        // Constants and game data
+        const TURNS_PER_DIFFICULTY = {1: 10, 2: 20, 3: 25};
+        const GYM_LEADER_DIFFICULTY = 1;
+        const ELITE_FOUR_DIFFICULTY = 2;
+        const CHAMPION_DIFFICULTY = 3;
+        const GYM_AND_ELITE4_NMBR_TYPES = 4;
+        const CHAMPION_NMBR_TYPES = 6;
+        
+        const TYPINGS_CLASSIC = {
+            'normal': 0, 'grass': 1, 'bug': 2, 'fire': 3, 'water': 4, 'ice': 5, 'electric': 6, 'flying': 7, 'fighting': 8,
+            'psychic': 9, 'ghost': 10, 'dark': 11, 'poison': 12, 'rock': 13, 'ground': 14, 'steel': 15, 'fairy': 16, 'dragon': 17
+        };
+        
+        const TYPINGS_ALT = {
+            'normie': 0, 'weed': 1, 'cockroach': 2, 'oven': 3, 'wet': 4, 'brrr': 5, 'zap': 6, 'high': 7, 'john cena': 8,
+            'mental': 9, 'boo': 10, 'sasuke': 11, 'alcohol': 12, 'hard': 13, 'down': 14, 'chainz': 15, 'winx': 16, 'xX_cool_type_Xx': 17
+        };
+
+        const TYPINGS_COLOR = [
+            '#A8A77A',
+            '#7AC74C',
+            '#A6B91A',
+            '#EE8130',
+            '#6390F0',
+            '#96D9D6',
+            '#F7D02C',
+            '#A98FF3',
+            '#C22E28',
+            '#F95587',
+            '#735797',
+            '#705746',
+            '#A33EA1',
+            '#B6A136',
+            '#E2BF65',
+            '#D685AD',
+            '#B7B7CE',
+            '#6F35FC',
+        ]
+        
+        const EFFECTIVENESS_MATRIX = [
+            [-1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0.5, 1, 0.5, 1, 1],
+            [1, -1, 0.5, 0.5, 2, 1, 1, 0.5, 1, 1, 1, 1, 0.5, 2, 2, 0.5, 1, 0.5],
+            [1, 2, -1, 0.5, 1, 1, 1, 0.5, 0.5, 2, 0.5, 2, 0.5, 1, 1, 0.5, 0.5, 1],
+            [1, 2, 2, -1, 0.5, 2, 1, 1, 1, 1, 1, 1, 1, 0.5, 1, 2, 1, 0.5],
+            [1, 0.5, 1, 2, -1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 0.5],
+            [1, 2, 1, 0.5, 0.5, -1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 0.5, 1, 2],
+            [1, 0.5, 1, 1, 2, 1, -1, 2, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0.5],
+            [1, 2, 2, 1, 1, 1, 0.5, -1, 2, 1, 1, 1, 1, 0.5, 1, 0.5, 1, 1],
+            [2, 1, 0.5, 1, 1, 2, 1, 0.5, -1, 0.5, 0, 2, 0.5, 2, 1, 2, 0.5, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 2, -1, 1, 0, 2, 1, 1, 0.5, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 2, -1, 0.5, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 0.5, 2, 2, -1, 1, 1, 1, 1, 0.5, 1],
+            [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 1, -1, 0.5, 0.5, 0, 2, 1],
+            [1, 1, 2, 2, 1, 2, 1, 2, 0.5, 1, 1, 1, 1, -1, 0.5, 0.5, 1, 1],
+            [1, 0.5, 0.5, 2, 1, 1, 2, 0, 1, 1, 1, 1, 2, 2, -1, 2, 1, 1],
+            [1, 1, 1, 0.5, 0.5, 2, 0.5, 1, 1, 1, 1, 1, 1, 2, 1, -1, 2, 1],
+            [1, 1, 1, 0.5, 1, 1, 1, 1, 2, 1, 1, 2, 0.5, 1, 1, 0.5, -1, 2],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 0, -1]
+        ];
+        
+
+        // Game state variables
+        let difficulty;
+        let typingsChoice;
+        let foeTypes;
+        let turnsRemaining;
+        let numberTypes;
+        let selectedTypeIndices = [];
+        let gameOver = false;
+        
+        // DOM Elements
+        const setupSection = document.getElementById('setupSection');
+        const gameSection = document.getElementById('gameSection');
+        const difficultySelect = document.getElementById('difficulty');
+        const typeNamesSelect = document.getElementById('typeNames');
+        const startGameButton = document.getElementById('startGame');
+        const turnsRemainingElement = document.getElementById('turnsRemaining');
+        const typeListElement = document.getElementById('typeList');
+        const selectedTypesElement = document.getElementById('selectedTypes');
+        const submitGuessButton = document.getElementById('submitGuess');
+        const randomGuessButton = document.getElementById('randomGuess');
+        const gameOutputElement = document.getElementById('gameOutput');
+        const historyElement = document.getElementById('history');
+        const newGameButton = document.getElementById('newGame');
+        
+        // Event listeners
+        startGameButton.addEventListener('click', initGame);
+        submitGuessButton.addEventListener('click', handleGuessSubmission);
+        randomGuessButton.addEventListener('click', makeRandomGuess);
+        newGameButton.addEventListener('click', resetGame);
+        
+        // Game functions
+        function initGame() {
+            difficulty = parseInt(difficultySelect.value);
+            const typingChoice = parseInt(typeNamesSelect.value);
+            
+            typingsChoice = typingChoice === 1 ? TYPINGS_CLASSIC : TYPINGS_ALT;
+            
+            numberTypes = difficulty === CHAMPION_DIFFICULTY ? CHAMPION_NMBR_TYPES : GYM_AND_ELITE4_NMBR_TYPES;
+            turnsRemaining = TURNS_PER_DIFFICULTY[difficulty];
+            
+            // Generate random foe types
+            foeTypes = [];
+            for (let i = 0; i < numberTypes; i++) {
+                foeTypes.push(Math.floor(Math.random() * 18));
+            }
+            
+            // Reset game state
+            selectedTypeIndices = [];
+            gameOver = false;
+            
+            // Update UI
+            setupSection.classList.add('hidden');
+            gameSection.classList.remove('hidden');
+            newGameButton.classList.add('hidden');
+            
+            updateTurnsRemaining();
+            renderTypeList();
+            renderSelectedTypes();
+            
+            gameOutputElement.innerHTML = `<p>Foe has chosen their ${numberTypes} types.</p>`;
+            historyElement.innerHTML = '<h3>History</h3>';
+        }
+        
+        function renderTypeList() {
+            typeListElement.innerHTML = '';
+            
+            // Create clickable type elements
+            for (const [typeName, typeIndex] of Object.entries(typingsChoice)) {
+                const typeElement = document.createElement('div');
+                typeElement.classList.add('selectable-type');
+                typeElement.textContent = `${typeName}`;
+                typeElement.dataset.index = typeIndex;
+                typeElement.style.backgroundColor = TYPINGS_COLOR[typeIndex];
+                
+                typeElement.addEventListener('click', () => {
+                    if (selectedTypeIndices.length < numberTypes && !gameOver) {
+                        selectedTypeIndices.push(parseInt(typeIndex));
+                        renderSelectedTypes();
+                    }
+                });
+                
+                typeListElement.appendChild(typeElement);
+            }
+        }
+        
+        function renderSelectedTypes() {
+            selectedTypesElement.innerHTML = '';
+            
+            if (selectedTypeIndices.length === 0) {
+                selectedTypesElement.textContent = 'No types selected yet';
+                return;
+            }
+            
+            const typesDisplay = document.createElement('div');
+            typesDisplay.classList.add('type-selector');
+            
+            selectedTypeIndices.forEach((typeIndex, i) => {
+                const typeElement = document.createElement('div');
+                typeElement.classList.add('type-item');
+                
+                // Find the type name by its index
+                const typeName = Object.keys(typingsChoice).find(key => typingsChoice[key] === typeIndex);
+                typeElement.textContent = `${i+1}: ${typeName}`;
+                typeElement.style.backgroundColor = TYPINGS_COLOR[typeIndex];
+                
+                // Add remove button
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'x';
+                removeButton.style.marginLeft = '5px';
+                removeButton.addEventListener('click', () => {
+                    selectedTypeIndices.splice(i, 1);
+                    renderSelectedTypes();
+                });
+                
+                typeElement.appendChild(removeButton);
+                typesDisplay.appendChild(typeElement);
+            });
+            
+            selectedTypesElement.appendChild(typesDisplay);
+        }
+        
+        function updateTurnsRemaining() {
+            turnsRemainingElement.textContent = `${turnsRemaining} turns remaining...`;
+        }
+        
+        function handleGuessSubmission() {
+            if (gameOver) return;
+            
+            if (selectedTypeIndices.length !== numberTypes) {
+                alert(`Please select exactly ${numberTypes} types!`);
+                return;
+            }
+            
+            // Process the guess
+            turnsRemaining--;
+            updateTurnsRemaining();
+            
+            // Create a new history entry
+            const historyEntry = document.createElement('div');
+            historyEntry.classList.add('history-entry');
+            
+            // Display selected types in history
+            const typeNames = selectedTypeIndices.map(index => {
+                return Object.keys(typingsChoice).find(key => typingsChoice[key] === index);
+            });
+            
+            historyEntry.innerHTML = `<strong>Your guess:</strong> ${typeNames.join(', ')}`;
+            
+            // Compare types and generate feedback
+            const result = compareTypes(selectedTypeIndices, foeTypes);
+            historyEntry.innerHTML += `<div>${result.html}</div>`;
+            
+            // Add to history
+            historyElement.insertBefore(historyEntry, historyElement.firstChild.nextSibling);
+            
+            // Update game output with the latest result
+            gameOutputElement.innerHTML = result.html;
+            
+            // Check win condition
+            if (result.success) {
+                gameOver = true;
+                gameOutputElement.innerHTML += '<p class="status" style="color: green;">Victory!!!</p>';
+                newGameButton.classList.remove('hidden');
+                return;
+            }
+            
+            // Check loss condition
+            if (turnsRemaining <= 0) {
+                gameOver = true;
+                const actualTypeNames = foeTypes.map(index => {
+                    return Object.keys(typingsChoice).find(key => typingsChoice[key] === index);
+                });
+                gameOutputElement.innerHTML += `<p class="status" style="color: red;">Defeat!!!</p>
+                <p>The foe's types were: ${actualTypeNames.join(', ')}</p>`;
+                newGameButton.classList.remove('hidden');
+                return;
+            }
+            
+            // Reset selected types for next guess
+            selectedTypeIndices = [];
+            renderSelectedTypes();
+        }
+        
+        function makeRandomGuess() {
+            if (gameOver) return;
+            
+            // Generate random types
+            selectedTypeIndices = [];
+            for (let i = 0; i < numberTypes; i++) {
+                selectedTypeIndices.push(Math.floor(Math.random() * 18));
+            }
+            
+            handleGuessSubmission();
+            if (!gameOver) {
+                renderSelectedTypes();
+            }
+        }
+        
+        function compareTypes(playerTypes, foeTypes) {
+            // Check if player guessed correctly
+            let allMatch = true;
+            for (let i = 0; i < playerTypes.length; i++) {
+                if (playerTypes[i] !== foeTypes[i]) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            
+            if (allMatch) {
+                return { success: true, html: '<p>All types match! You win!</p>' };
+            }
+            
+            let resultHtml = '';
+            
+            if (difficulty === GYM_LEADER_DIFFICULTY) {
+                // For Gym Leader difficulty, show details for each type
+                for (let i = 0; i < playerTypes.length; i++) {
+                    const effectiveness = EFFECTIVENESS_MATRIX[playerTypes[i]][foeTypes[i]];
+                    const playerTypeName = Object.keys(typingsChoice).find(key => typingsChoice[key] === playerTypes[i]);
+                    
+                    let message = '';
+                    if (effectiveness === 0) {
+                        message = `Your type n°${i+1} (${playerTypeName}) is useless against mine.`;
+                    } else if (effectiveness === 0.5) {
+                        message = `Your type n°${i+1} (${playerTypeName}) is not very effective against mine.`;
+                    } else if (effectiveness === 1) {
+                        message = `Your type n°${i+1} (${playerTypeName}) is effective against mine.`;
+                    } else if (effectiveness === 2) {
+                        message = `Your type n°${i+1} (${playerTypeName}) is very effective against mine.`;
+                    } else if (effectiveness === -1) {
+                        message = `Your type n°${i+1} (${playerTypeName}) is the same as mine!`;
+                    }
+                    
+                    resultHtml += `<p>${message}</p>`;
+                }
+            } else {
+                // For Elite Four and Champion difficulties, show aggregate counts
+                let uselessCount = 0;
+                let notVeryEffectiveCount = 0;
+                let effectiveCount = 0;
+                let veryEffectiveCount = 0;
+                let sameCount = 0;
+                
+                for (let i = 0; i < playerTypes.length; i++) {
+                    const effectiveness = EFFECTIVENESS_MATRIX[playerTypes[i]][foeTypes[i]];
+                    
+                    if (effectiveness === 0) {
+                        uselessCount++;
+                    } else if (effectiveness === 0.5) {
+                        notVeryEffectiveCount++;
+                    } else if (effectiveness === 1) {
+                        effectiveCount++;
+                    } else if (effectiveness === 2) {
+                        veryEffectiveCount++;
+                    } else if (effectiveness === -1) {
+                        sameCount++;
+                    }
+                }
+                
+                const playerTypeNames = playerTypes.map(index => {
+                    return Object.keys(typingsChoice).find(key => typingsChoice[key] === index);
+                });
+                
+                resultHtml += `<p>Your types: ${playerTypeNames.join(', ')}</p>`;
+                
+                if (uselessCount > 0) {
+                    resultHtml += `<p>Among your types there are ${uselessCount} that are useless against mines.</p>`;
+                }
+                if (notVeryEffectiveCount > 0) {
+                    resultHtml += `<p>Among your types there are ${notVeryEffectiveCount} that are not very effective against mines.</p>`;
+                }
+                if (effectiveCount > 0) {
+                    resultHtml += `<p>Among your types there are ${effectiveCount} that are effective against mines.</p>`;
+                }
+                if (veryEffectiveCount > 0) {
+                    resultHtml += `<p>Among your types there are ${veryEffectiveCount} that are very effective against mines.</p>`;
+                }
+                if (sameCount > 0) {
+                    resultHtml += `<p>Among your types there are ${sameCount} that are the same as mines!</p>`;
+                }
+            }
+            
+            return { success: false, html: resultHtml };
+        }
+        
+        function resetGame() {
+            setupSection.classList.remove('hidden');
+            gameSection.classList.add('hidden');
+            gameOutputElement.innerHTML = '';
+            historyElement.innerHTML = '<h3>History</h3>';
+        }
+    </script>
+</body>
+</html>

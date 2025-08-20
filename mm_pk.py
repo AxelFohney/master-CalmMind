@@ -165,5 +165,4 @@ if __name__ == '__main__':
 """
     // TODO
     # dialogues en mode pkmn
-    # UI
 """
