@@ -57,6 +57,10 @@ This game is available in two versions:
 - v1.0.0: Initial Python command-line version
 - v1.1.0: Added web-based version with improved UI
 
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
 ## 🙏 Acknowledgments
 
 - Inspired by the classic Mastermind board game
